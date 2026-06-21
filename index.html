@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IDEAL-Bench — 3D Layout Reasoning for VLMs</title>
+<meta property="og:title" content="IDEAL-Bench: Indoor Benchmark Dataset for Evaluating & Analysis by 3D Layout Reasoning">
+<meta property="og:description" content="A new evaluation suite requiring VLMs to predict structured 3D layouts on photorealistic indoor scenes, scored numerically and perceptually.">
+<meta property="og:type" content="website">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://api.fontshare.com">
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@400,500,600,700&display=swap" rel="stylesheet">
+
+<style>
+  :root{
+    --ink:#1a1a1f;
+    --muted:#5b6068;
+    --line:#e4e3dd;
+    --bg:#fbfaf7;
+    --card:#ffffff;
+    --accent:#6f88a8;        /* retro slate-blue — used for tables, links, structural elements */
+    --accent-ink:#516f8e;    /* darker slate-blue, for labels and link text */
+    --link-ink:#557DE6;      /* vivid indigo — for inline prose links that need to stand out */
+    --accent-soft:#e9eef3;   /* pale slate-blue wash */
+    --pop:#5b8bd0;           /* cornflower blue — from the user's reference swatch, less teal/green than before */
+    --pop-soft:#e1eafb;      /* pale periwinkle wash — user-specified exact value */
+    --pop-ink:#3f5c7d;       /* slightly darker than accent-ink, for sufficient contrast on the brighter pop-soft background */
+    --track:#e7e4dc;         /* warm bar track on cream */
+    --max:880px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"General Sans",system-ui,sans-serif;font-size:17px;line-height:1.65;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--accent);text-decoration:none}
+  a:hover{text-decoration:underline}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:4px}
+
+  .wrap{max-width:var(--max);margin:0 auto;padding:0 24px}
+  .mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-feature-settings:"tnum"}
+
+  /* ---------------- Header ---------------- */
+  header{padding:72px 0 42px;text-align:center;border-bottom:1px solid var(--line)}
+  .venue{
+    display:inline-block;font-size:13px;font-weight:600;letter-spacing:.04em;
+    text-transform:uppercase;color:var(--accent);background:var(--accent-soft);
+    padding:5px 14px;border-radius:999px;margin-bottom:22px;
+  }
+  h1{
+    font-family:"Newsreader",Georgia,serif;font-weight:400;
+    font-size:clamp(26px,4vw,38px);line-height:1.2;margin:0 0 28px;letter-spacing:-.01em;
+  }
+  h1 .name{color:var(--ink)}
+  .tagline{font-size:clamp(16px,2.2vw,18px);color:var(--muted);max-width:600px;margin:0 auto 28px}
+
+  /* authors — EDIT below */
+  .authors{font-family:"Newsreader",Georgia,serif;font-size:18px;margin:0 0 6px;line-height:1.9}
+  .authors a{color:var(--ink);font-weight:500}
+  .authors sup{color:var(--accent);font-weight:600}
+  .affil{font-family:"Newsreader",Georgia,serif;color:var(--muted);font-size:15px;margin:0}
+
+  /* ---------------- Buttons ---------------- */
+  .links{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:30px}
+  .btn{
+    display:inline-flex;align-items:center;gap:8px;padding:10px 20px;border-radius:10px;
+    background:var(--ink);color:#fff;font-weight:500;font-size:15px;
+    border:1px solid var(--ink);transition:transform .12s ease,opacity .12s ease;
+  }
+  .btn:hover{text-decoration:none;transform:translateY(-1px);opacity:.92}
+  .btn svg{width:17px;height:17px}
+  .btn.ghost{background:transparent;color:var(--ink);border-color:#d6d5cf}
+  .btn.ghost:hover{border-color:var(--ink)}
+
+  /* ---------------- Teaser ---------------- */
+  .teaser{margin:44px auto 0;text-align:center}
+  .teaser img{max-width:100%;border-radius:4px;border:1px solid var(--line);cursor:zoom-in;transition:opacity .15s ease}
+  .teaser img:hover{opacity:.88}
+
+  /* ---------------- Lightbox ---------------- */
+  .lightbox-overlay{
+    position:fixed;inset:0;background:rgba(20,20,24,.88);
+    display:none;align-items:center;justify-content:center;
+    z-index:999;cursor:zoom-out;padding:28px;
+  }
+  .lightbox-overlay.open{display:flex}
+  .lightbox-overlay img{max-width:92vw;max-height:92vh;border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.5)}
+  .teaser .placeholder{
+    display:flex;align-items:center;justify-content:center;height:300px;
+    border:1px dashed #cbc9c1;border-radius:12px;color:var(--muted);font-size:14.5px;background:var(--card);
+  }
+  figcaption{color:var(--muted);font-size:14px;margin-top:14px;text-align:left;line-height:1.55}
+  figcaption b{color:var(--ink)}
+
+  /* ---------------- Sections ---------------- */
+  section{padding:56px 0;border-bottom:1px solid var(--line)}
+  section:last-of-type{border-bottom:none}
+  h2{font-family:"Newsreader",Georgia,serif;font-weight:400;font-size:28px;line-height:1.2;margin:0 0 20px;letter-spacing:-.01em;color:var(--ink)}
+  h3{font-size:18px;font-weight:600;margin:30px 0 8px}
+  p{margin:0 0 18px}
+
+  /* signature: unsolved bar */
+  .scorebar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:24px 26px;margin:8px 0 0}
+  .scorebar .top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:14px;flex-wrap:wrap;gap:6px}
+  .scorebar .who{font-weight:600;font-size:15px}
+  .scorebar .who span{color:var(--muted);font-weight:400}
+  .scorebar .val{font-family:"JetBrains Mono",monospace;font-weight:600;font-size:22px}
+  .scorebar .val em{color:var(--muted);font-style:normal;font-size:15px}
+  .track{position:relative;height:15px;background:var(--track);border-radius:8px;overflow:hidden}
+  .fill{position:absolute;inset:0 auto 0 0;width:62.1%;background:var(--accent);border-radius:8px}
+  .scorebar .gap{font-size:13.5px;color:var(--muted);margin:12px 0 0}
+
+  /* dimension grid */
+  .dims{display:grid;grid-template-columns:repeat(5,1fr);gap:13px;margin-top:8px}
+  .dim{background:var(--pop-soft);border-radius:11px;padding:18px 16px;box-shadow:0 2px 6px rgba(80,140,180,.3)}
+  .dim .t{font-weight:700;font-size:17px;margin:0 0 10px;color:var(--pop-ink)}
+  .dim .m{font-size:13px;color:var(--muted);line-height:1.5;list-style:none;margin:0;padding:0}
+  .dim .m li{position:relative;padding-left:15px;margin-bottom:5px}
+  .dim .m li::before{content:"•";position:absolute;left:0;top:0;color:var(--pop-ink)}
+  .dim .m li:last-child{margin-bottom:0}
+
+  /* ---------------- Leaderboard ---------------- */
+  .lb-wrap{overflow-x:auto;border:1px solid #d6dde6;border-radius:12px;background:var(--card)}
+  table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}
+  thead th{
+    font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;
+    color:var(--accent-ink);text-align:left;padding:15px 18px;border-bottom:1.5px solid #d6dde6;
+    background:var(--accent-soft);
+  }
+  thead th.r{text-align:right}
+  tbody td{padding:13px 18px;border-bottom:1px solid #e3e8ee;vertical-align:middle;background:#f7f9fb}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr.lead{background:var(--accent-soft)}
+  tbody tr.lead td{background:var(--accent-soft)}
+  .rk{font-family:"JetBrains Mono",monospace;color:var(--muted);width:34px}
+  .model{font-weight:500;color:var(--accent-ink)}
+  .tag{font-size:11px;font-weight:600;letter-spacing:.03em;padding:2px 8px;border-radius:5px;margin-left:8px;vertical-align:middle}
+  .tag.prop{background:#ecebe6;color:#6a6d72}
+  .tag.open{background:#eaf5ec;color:#2f7d44}
+  .ov{display:flex;align-items:center;gap:11px;justify-content:flex-end}
+  .ovbar{width:96px;height:8px;background:var(--track);border-radius:5px;overflow:hidden;flex:none}
+  .ovbar i{display:block;height:100%;background:var(--accent);border-radius:5px}
+  .ovnum{font-family:"JetBrains Mono",monospace;font-weight:600;width:44px;text-align:right}
+  .geo{font-family:"JetBrains Mono",monospace;color:var(--muted);text-align:right}
+  .failed td{color:#b8b6ae}
+  .lb-note{font-size:13px;color:var(--muted);margin:14px 2px 0}
+
+  /* full 13-column metric table — grouped-header academic style, in the retro slate-blue */
+  .lb-full{border-radius:12px}
+  .lb-full table{font-size:13.5px;min-width:1180px}
+  .lb-full thead tr.grp th{
+    text-align:center;font-size:11.5px;font-weight:700;letter-spacing:.04em;
+    padding:11px 12px 8px;border-bottom:1px solid #c7d2dd;color:var(--accent-ink);
+    background:#e8edf2;
+  }
+  .lb-full thead tr.grp th:first-child{background:#e8edf2}
+  .lb-full thead tr.cols th{
+    padding:8px 12px 12px;font-size:11px;background:#f2f5f8;
+    border-bottom:1.5px solid #c7d2dd;color:#5c7693;
+  }
+  .lb-full thead tr.cols th:first-child{background:#f2f5f8;border-bottom:1.5px solid #c7d2dd}
+  .lb-full thead tr.cols th.sep-l{border-left:1px solid #c7d2dd}
+  .lb-full tbody td{padding:9px 12px;text-align:right;font-family:"JetBrains Mono",monospace;background:#f7f9fb}
+  .lb-full tbody td.name{text-align:left;font-family:"General Sans",sans-serif;color:var(--accent-ink);font-weight:500}
+  .lb-full tbody td.sep-l{border-left:1px solid #dde4ea}
+  .lb-full tbody tr:nth-child(even):not(.grp-head):not(.failed) td{background:#eef2f6}
+  .lb-full tbody td b{color:var(--accent-ink);font-weight:700;background:#dbe5ed;border-radius:4px;padding:2px 6px;margin:-2px -6px}
+  .lb-full tbody td u{color:var(--ink);font-weight:600;text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:1.5px;text-underline-offset:2px}
+  .lb-full tbody tr.grp-head td{
+    text-align:left;font-weight:600;font-style:normal;color:var(--accent-ink);
+    background:#dbe5ed;font-family:"General Sans",sans-serif;font-size:12px;
+    letter-spacing:.03em;text-transform:uppercase;padding:8px 12px;
+    border-top:1px solid #c7d2dd;border-bottom:1px solid #c7d2dd;
+  }
+  .lb-full tbody tr.lead td{background:#e8edf2}
+  .lb-full tbody tr.lead td b{background:#cddae6}
+  .lb-full tbody tr.failed td{color:#b8b6ae;font-family:"General Sans",sans-serif;font-style:italic;background:var(--card)}
+
+  /* hero quote — standalone statement above the teaser, generous breathing room */
+  .hero-quote{
+    font-family:"Newsreader",Georgia,serif;font-weight:400;font-style:italic;
+    font-size:clamp(20px,2.8vw,25px);line-height:1.6;color:var(--ink);text-align:center;
+    max-width:680px;margin:0 auto;padding:0 12px;position:relative;
+  }
+  .hero-quote em{font-style:normal;color:var(--pop);font-weight:500}
+  .hero-quote .q{
+    font-style:normal;font-weight:700;color:var(--pop);font-size:1.15em;
+  }
+
+  /* jump navigation — card style matching the dimension cards, for real visual presence */
+  .nav-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:8px}
+  .nav-card{
+    background:var(--pop-soft);border:1.5px solid var(--pop);border-radius:12px;
+    padding:22px 12px;text-align:center;color:var(--pop-ink);font-weight:600;font-size:14.5px;
+    display:flex;flex-direction:column;align-items:center;gap:10px;line-height:1.3;
+    transition:transform .12s ease,box-shadow .12s ease;
+  }
+  .nav-card svg{width:26px;height:26px}
+  .nav-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(80,140,180,.35);text-decoration:none}
+  .jump-hint{
+    margin-top:14px;border:1px solid var(--line);border-radius:12px;background:var(--card);
+    text-align:center;padding:13px 18px;font-size:14px;color:var(--accent-ink);font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+  }
+
+  /* animated click cursor — pointer taps down, ripple fires at that exact moment, then both rest before looping */
+  .click-anim{position:relative;display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;flex:none}
+  .click-anim .ripple{
+    position:absolute;left:54%;top:58%;width:16px;height:16px;margin:-8px 0 0 -8px;
+    border-radius:50%;background:var(--pop);opacity:0;
+    animation:clickRipple 1.8s ease-out infinite;
+  }
+  .click-anim .cursor{position:relative;z-index:1;display:block;color:var(--accent-ink);
+    animation:cursorTap 1.8s ease-in-out infinite;
+  }
+  @keyframes clickRipple{
+    0%,38%{transform:scale(.3);opacity:0}
+    44%{transform:scale(.5);opacity:.55}
+    62%{transform:scale(1.5);opacity:.12}
+    74%,100%{transform:scale(1.8);opacity:0}
+  }
+  @keyframes cursorTap{
+    0%,38%,100%{transform:translate(0,0) scale(1)}
+    44%{transform:translate(1px,1px) scale(.88)}
+    54%{transform:translate(0,0) scale(1)}
+  }
+  @media(prefers-reduced-motion:reduce){
+    .click-anim .ripple,.click-anim .cursor{animation:none}
+  }
+
+  /* intro highlights — contribution bullets replacing the formal abstract block */
+  .highlights{margin:22px 0 0;padding-left:0;list-style:none}
+  .highlights li{position:relative;padding-left:26px;margin-bottom:14px;line-height:1.6}
+  .highlights li::before{content:"";position:absolute;left:4px;top:11px;width:6px;height:6px;border-radius:50%;background:var(--accent)}
+  .highlights b{color:var(--ink)}
+  .highlights a b{color:var(--link-ink)}
+  .link-strong{color:var(--link-ink);font-weight:600}
+
+  /* ---------------- BibTeX ---------------- */
+  .bib{position:relative;background:#16181d;color:#e8e6df;border-radius:12px;padding:22px 24px;overflow-x:auto;
+       font-family:"JetBrains Mono",monospace;font-size:13.5px;line-height:1.7}
+  .bib pre{margin:0;white-space:pre}
+  .copy{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.08);color:#e8e6df;
+        border:1px solid rgba(255,255,255,.2);border-radius:7px;padding:5px 13px;font-size:12px;cursor:pointer;font-family:"General Sans",sans-serif}
+  .copy:hover{background:rgba(255,255,255,.18)}
+
+  footer{padding:40px 0 64px;text-align:center;color:var(--muted);font-size:13.5px}
+
+  @media(max-width:760px){.dims{grid-template-columns:repeat(2,1fr)}.nav-cards{grid-template-columns:repeat(2,1fr)}.dims-3{grid-template-columns:repeat(2,1fr)}}
+  .dims-3{grid-template-columns:repeat(3,1fr);margin-top:22px}
+  @media(max-width:560px){
+    body{font-size:16px}
+    header{padding:50px 0 34px}
+    section{padding:42px 0}
+    .stats{grid-template-columns:repeat(2,1fr)}
+  }
+  @media(prefers-reduced-motion:reduce){.btn{transition:none}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+
+    <h1><span class="name">IDEAL-Bench</span>: Indoor Benchmark Dataset for Evaluating &amp; Analysis by 3D Layout Reasoning</h1>
+
+    <p class="authors">
+      <a href="#">Yuening Cai</a>,
+      <a href="#">Junwei Zhou</a>,
+      <a href="#">Youran Qu</a>,
+      <a href="#">Yu-Wing Tai</a>
+    </p>
+    <p class="affil">Department of Computer Science &nbsp;·&nbsp; Dartmouth College</p>
+
+    <!-- ===== EDIT: link URLs. Delete buttons you don't have yet. ===== -->
+    <div class="links">
+      <a class="btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="15" y2="17"/></svg>Paper</a>
+      <a class="btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="9" x2="9" y2="20"/></svg>arXiv</a>
+      <a class="btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>Code</a>
+      <a class="btn" href="#" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg>IDEAL-Scenes</a>
+    </div>
+  </div>
+</header>
+
+<div class="wrap" style="padding-top:54px;padding-bottom:54px">
+  <p class="hero-quote"><span class="q">「</span>Spatial QA tests whether a model <em>sees</em> space; IDEAL-Bench tests whether it <em>understands</em> the space.<span class="q">」</span></p>
+</div>
+
+<div class="wrap">
+  <figure class="teaser">
+    <img src="teaser.png" alt="IDEAL-Bench overview: QA paradigm vs. layout evaluation vs. radar chart">
+    <figcaption><b>Figure 1. Towards better evaluation of spatial intelligence in VLMs.</b> Unlike 3D QA benchmarks, IDEAL-Bench requires models to estimate every visible object's 3D pose and extent, evaluated via numerical metrics and a render-and-compare protocol. The task demands genuine spatial reasoning and remains substantially unsolved, with the strongest model reaching only 62.1/100 overall.</figcaption>
+  </figure>
+</div>
+
+<div class="wrap">
+  <section>
+  <p style="font-size:18px;line-height:1.7">We introduce <b>IDEAL-Bench</b>, an evaluation suite that requires VLMs to predict structured 3D layouts on photorealistic indoor scenes, capturing each visible object's position, orientation, and extent rather than just answering questions about them. Predictions are scored across eleven metrics spanning five numerical dimensions, paired with a perceptual render-and-compare protocol that substitutes predicted poses into the original scene and re-renders it for comparison against the reference image.</p>
+
+  <ul class="highlights">
+    <li>We introduce <a href="#layout-inference"><b>holistic 3D layout inference</b></a> as a new evaluation paradigm for VLM spatial competence, requiring structured, geometrically verifiable estimations of semantic-aware object pose and extent from a single image.</li>
+    <li>We release <a href="#ideal-scenes"><b>IDEAL-Scenes</b></a>, a dataset of 1,000 indoor scenes across 10 room types with programmatically extracted ground-truth layouts and re-renderable Blender source files, together with <a href="#evaluation-protocol"><b>IDEAL-Bench</b></a>, an evaluation suite combining numerical geometric metrics with perceptual render-and-compare assessment validated against human judgments.</li>
+    <li>Our evaluation of <a href="#leaderboard"><b>15 VLMs</b></a> uncovers a critical gap between linguistic proficiency and geometric precision, identifying coordinate estimation as a primary bottleneck. These findings demonstrate that IDEAL-Bench serves as a necessary complement to existing benchmarks by surfacing hidden geometric deficiencies in holistic 3D reasoning.</li>
+  </ul>
+
+  <div class="nav-cards" style="margin-top:34px">
+    <a class="nav-card" href="#layout-inference">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.27 6.96L12 12.01l8.73-5.05"/><path d="M12 22.08V12"/></svg>
+      Layout Inference</a>
+    <a class="nav-card" href="#ideal-scenes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v6c0 1.7 3.6 3 8 3s8-1.3 8-3V5"/><path d="M4 11v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg>
+      IDEAL-Scenes</a>
+    <a class="nav-card" href="#evaluation-protocol">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Evaluation Protocol</a>
+    <a class="nav-card" href="#leaderboard">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      Leaderboard</a>
+  </div>
+  <div class="jump-hint">
+    <span class="click-anim">
+      <span class="ripple"></span>
+      <svg class="cursor" viewBox="0 0 24 24" fill="currentColor" width="17" height="17"><path d="M3 3l7.07 16.97 2.51-7.39 7.39-2.51L3 3z"/></svg>
+    </span>
+    Click to jump to each section.
+  </div>
+  </section>
+
+  <section id="layout-inference">
+    <h2>Holistic 3D Layout Inference</h2>
+
+    <figure class="teaser" style="margin:8px 0 30px">
+      <img src="pipeline.png" alt="IDEAL-Bench pipeline: dataset synthesis, model inference, parse and reconstruct, evaluation">
+      <figcaption><b>Figure 2. Overview of IDEAL-Bench.</b> Four stages: dataset synthesis (InfiniGen, filtering), model inference (structured JSON prediction from 15 VLMs), parse &amp; reconstruct (coordinate alignment, object matching, re-rendering), and evaluation (D1–D5 numerical metrics plus a Judge VLM perceptual score).</figcaption>
+    </figure>
+
+    <p>From a single RGB image, a candidate object-category list, and a set of candidate room types, a model must produce a globally consistent, structured 3D layout: the room type, the room dimensions, and for every visible object its category, 3D center position, bounding-box extent, and yaw rotation. No depth, camera parameters, or instance masks are provided, and the model reasons about 3D structure purely from monocular appearance.</p>
+  </section>
+
+  <section id="ideal-scenes">
+    <h2>IDEAL-Scenes</h2>
+
+    <figure class="teaser" style="margin:8px 0 24px">
+      <img src="dataset.png" alt="Sample IDEAL-Scenes across room types with ground-truth annotations">
+      <figcaption><b>Figure 3. IDEAL-Scenes samples.</b></figcaption>
+    </figure>
+
+    <p>A synthetic indoor dataset of 1,000 scenes spanning 10 room types (bedroom, home studio, living room, kitchen, bathroom, dining room, office, meeting room, classroom, and library), with 100 scenes per type. Built on a procedural pipeline based on <a class="link-strong" href="https://github.com/princeton-vl/infinigen" target="_blank" rel="noopener">InfiniGen</a>, each scene is a self-contained bundle: a rendered RGB image, programmatically exact ground-truth annotations, the native <code>scene.blend</code> source file, an instance segmentation map, and scene metadata. The generation pipeline is released on <a class="link-strong" href="#" target="_blank" rel="noopener">GitHub</a> and designed to be extensible, supporting additional room types, asset libraries, and rendering from arbitrary camera viewpoints.</p>
+  </section>
+
+  <section id="evaluation-protocol">
+    <h2>Evaluation Protocol</h2>
+    <p>IDEAL-Bench scores every prediction through two parallel pathways: a numerical comparison against the ground-truth layout, and a perceptual comparison against a re-rendered reconstruction.</p>
+
+    <h3>Numerical evaluation</h3>
+    <p>Predicted objects are matched to ground-truth instances. For non-grid scenes, we use category-wise Hungarian matching to assign each predicted object to its closest-matching ground-truth instance and compare position, dimensions, and rotation. For grid-structured scenes (classrooms, libraries, offices) where per-instance correspondence is ill-posed, we assess structural regularity directly instead. Predictions are then scored along five functionally distinct dimensions, each normalised to [0, 100]. The Overall score is the unweighted mean of all eleven applicable rate metrics, so no single dimension is privileged a priori.</p>
+    <div class="dims">
+      <div class="dim"><div class="t">D1: Scene Validity</div><ul class="m"><li>Parse Success Rate (PSR)</li><li>Room Type Accuracy (RTA)</li></ul></div>
+      <div class="dim"><div class="t">D2: Physical Plausibility</div><ul class="m"><li>Non-Overlap Rate (NOR)</li><li>In-Bounds Rate (IBR)</li></ul></div>
+      <div class="dim"><div class="t">D3: Geometric Accuracy</div><ul class="m"><li>Position Accuracy (PA)</li><li>Precision IoU (Prec.)</li><li>Rotation Accuracy (RA)</li></ul></div>
+      <div class="dim"><div class="t">D4: Object Recognition</div><ul class="m"><li>Recognition Rate (RR)</li><li>Non-Hallucination Rate (NHR)</li></ul></div>
+      <div class="dim"><div class="t">D5: Grid Layout</div><ul class="m"><li>Grid Coverage Rate (GCR)</li><li>Grid Self-consistency Rate (GSR)</li></ul></div>
+    </div>
+
+    <h3>Perceptual evaluation</h3>
+    <p>For every object in view, the predicted position, yaw, and dimensions replace the ground-truth values in the original Blender scene, and the result is re-rendered from the source camera. Hallucinated objects are rendered as red spheres to make false positives explicit. A Judge VLM (Claude Opus 4.7) then compares each reconstruction against the reference image, assigning a 1–5 spatial-similarity score together with a strict total ranking, both repeated five times and averaged. Because weaker models often produce reconstructions with missing assets or failed composition, this pathway is restricted to the six top-scored models across 200 scenes (20 per room type).</p>
+    <figure class="teaser" style="margin:14px 0 4px">
+      <img src="render_compare_example.png" alt="Reference image vs. reconstructed render, with hallucinated objects flagged as red spheres">
+      <figcaption><b>Figure 4. Example render-and-compare pair.</b> The reference image against a scene reconstructed from a model's predicted layout, the pair that the Judge VLM scores.</figcaption>
+    </figure>
+  </section>
+
+  <section id="leaderboard">
+    <h2>Leaderboard</h2>
+    <p>Numerically, D1 (Scene Validity) is near-saturated and D4 (Object Recognition) remains uniformly strong, while performance collapses on D3 (Geometric Accuracy). Even the leader, Gemini 2.5 Pro, reaches only 62.1/100 overall. Parameter count is also a weak predictor of rank: Gemma-4-31B-IT ranks third overall, ahead of open-source models with far more parameters, and GPT-4o outranks the newer GPT-5.4. Two models, InternVL3.5-30B-A3B and Janus-Pro-7B, fail to parse valid output altogether.</p>
+
+    <div class="lb-wrap lb-full" style="margin-top:24px">
+      <table>
+        <thead>
+          <tr class="grp">
+            <th></th><th colspan="3">Overall</th><th colspan="2" class="sep-l">D1: Scene Val.</th>
+            <th colspan="2" class="sep-l">D2: Phys. Plaus.</th><th colspan="3" class="sep-l">D3: Geo. Acc.</th>
+            <th colspan="2" class="sep-l">D4: Obj. Recog.</th><th colspan="2" class="sep-l">D5: Grid Layout</th>
+          </tr>
+          <tr class="cols">
+            <th style="text-align:left">Model</th>
+            <th>Ovr.↑</th><th>Rank↓</th><th>Geo.↑</th>
+            <th class="sep-l">RTA↑</th><th>PSR↑</th>
+            <th class="sep-l">NOR↑</th><th>IBR↑</th>
+            <th class="sep-l">PA↑</th><th>Prec.↑</th><th>RA↑</th>
+            <th class="sep-l">RR↑</th><th>NHR↑</th>
+            <th class="sep-l">GCR↑</th><th>GSR↑</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="grp-head"><td colspan="15">Proprietary Models</td></tr>
+          <tr class="lead">
+            <td class="name">Gemini 2.5 Pro</td>
+            <td><b>62.1</b></td><td><b>1</b></td><td><b>40.1</b></td>
+            <td class="sep-l">87.5</td><td><b>100.0</b></td>
+            <td class="sep-l"><u>80.9</u></td><td>34.3</td>
+            <td class="sep-l"><u>10.8</u></td><td><b>25.5</b></td><td><b>37.7</b></td>
+            <td class="sep-l"><b>89.9</b></td><td>90.3</td>
+            <td class="sep-l"><b>29.1</b></td><td>97.3</td>
+          </tr>
+          <tr>
+            <td class="name">GPT-4o</td>
+            <td><u>60.4</u></td><td><u>2</u></td><td><u>35.9</u></td>
+            <td class="sep-l">88.5</td><td><b>100.0</b></td>
+            <td class="sep-l"><b>84.6</b></td><td>46.1</td>
+            <td class="sep-l"><b>11.5</b></td><td>23.1</td><td>20.0</td>
+            <td class="sep-l">72.8</td><td><u>92.2</u></td>
+            <td class="sep-l">25.2</td><td><b>100.0</b></td>
+          </tr>
+          <tr>
+            <td class="name">Claude Sonnet 4.6</td>
+            <td>59.2</td><td>4</td><td>34.7</td>
+            <td class="sep-l">88.5</td><td><b>100.0</b></td>
+            <td class="sep-l">80.6</td><td>34.6</td>
+            <td class="sep-l">4.9</td><td>18.6</td><td>26.8</td>
+            <td class="sep-l"><u>85.4</u></td><td>88.1</td>
+            <td class="sep-l">27.8</td><td>95.7</td>
+          </tr>
+          <tr>
+            <td class="name">GPT-5.4</td>
+            <td>56.7</td><td>5</td><td>28.4</td>
+            <td class="sep-l"><u>89.3</u></td><td><b>100.0</b></td>
+            <td class="sep-l">65.0</td><td>55.3</td>
+            <td class="sep-l">8.5</td><td><u>24.3</u></td><td><u>33.7</u></td>
+            <td class="sep-l">82.2</td><td>89.9</td>
+            <td class="sep-l"><u>28.6</u></td><td>46.7</td>
+          </tr>
+          <tr class="grp-head"><td colspan="15">Open-source Models</td></tr>
+          <tr>
+            <td class="name">Gemma-4-31B-IT</td>
+            <td>59.7</td><td>3</td><td>35.7</td>
+            <td class="sep-l">84.4</td><td><u>99.9</u></td>
+            <td class="sep-l">78.3</td><td>40.9</td>
+            <td class="sep-l">9.8</td><td>24.1</td><td>20.8</td>
+            <td class="sep-l">81.8</td><td><b>92.6</b></td>
+            <td class="sep-l">24.1</td><td><u>99.9</u></td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3-VL-8B</td>
+            <td>55.1</td><td>6</td><td>28.6</td>
+            <td class="sep-l">84.1</td><td><b>100.0</b></td>
+            <td class="sep-l">62.2</td><td>52.5</td>
+            <td class="sep-l">8.2</td><td>18.5</td><td>19.6</td>
+            <td class="sep-l">73.0</td><td>91.1</td>
+            <td class="sep-l">14.4</td><td>82.2</td>
+          </tr>
+          <tr>
+            <td class="name">GLM-4.6V</td>
+            <td>54.4</td><td>7</td><td>30.7</td>
+            <td class="sep-l">87.0</td><td><b>100.0</b></td>
+            <td class="sep-l">60.9</td><td>29.6</td>
+            <td class="sep-l">4.4</td><td>10.1</td><td>26.4</td>
+            <td class="sep-l">76.8</td><td>91.2</td>
+            <td class="sep-l">13.3</td><td>99.3</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen2.5-VL-72B-Instruct</td>
+            <td>52.6</td><td>8</td><td>27.9</td>
+            <td class="sep-l">85.4</td><td><b>100.0</b></td>
+            <td class="sep-l">64.8</td><td>26.7</td>
+            <td class="sep-l">2.1</td><td>7.7</td><td>18.5</td>
+            <td class="sep-l">70.6</td><td>91.4</td>
+            <td class="sep-l">11.9</td><td>99.3</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3-VL-235B-A22B-Instruct</td>
+            <td>51.8</td><td>9</td><td>24.3</td>
+            <td class="sep-l"><b>90.3</b></td><td>76.0</td>
+            <td class="sep-l">58.5</td><td><u>56.1</u></td>
+            <td class="sep-l">7.2</td><td>21.2</td><td>22.8</td>
+            <td class="sep-l">76.7</td><td>90.4</td>
+            <td class="sep-l">16.1</td><td>54.3</td>
+          </tr>
+          <tr>
+            <td class="name">GLM-4.6V-Flash</td>
+            <td>51.5</td><td>10</td><td>24.0</td>
+            <td class="sep-l">86.2</td><td>92.5</td>
+            <td class="sep-l">53.6</td><td>49.0</td>
+            <td class="sep-l">4.7</td><td>11.8</td><td>19.2</td>
+            <td class="sep-l">73.7</td><td>91.2</td>
+            <td class="sep-l">7.5</td><td>76.9</td>
+          </tr>
+          <tr>
+            <td class="name">Qwen3-VL-30B</td>
+            <td>50.8</td><td>11</td><td>22.6</td>
+            <td class="sep-l">84.0</td><td>92.0</td>
+            <td class="sep-l">56.8</td><td>44.2</td>
+            <td class="sep-l">7.5</td><td>14.6</td><td>21.6</td>
+            <td class="sep-l">79.9</td><td>89.2</td>
+            <td class="sep-l">22.9</td><td>46.5</td>
+          </tr>
+          <tr>
+            <td class="name">InternVL3.5-8B</td>
+            <td>45.9</td><td>12</td><td>27.0</td>
+            <td class="sep-l">80.8</td><td>43.7</td>
+            <td class="sep-l">66.9</td><td>23.0</td>
+            <td class="sep-l">2.6</td><td>4.9</td><td>18.4</td>
+            <td class="sep-l">72.0</td><td>84.2</td>
+            <td class="sep-l">8.9</td><td><b>100.0</b></td>
+          </tr>
+          <tr>
+            <td class="name">LLaVA-1.6-Mistral-7B</td>
+            <td>44.5</td><td>13</td><td>17.5</td>
+            <td class="sep-l">64.8</td><td>98.1</td>
+            <td class="sep-l">16.3</td><td><b>70.6</b></td>
+            <td class="sep-l">2.4</td><td>4.6</td><td>19.2</td>
+            <td class="sep-l">69.2</td><td>82.8</td>
+            <td class="sep-l">8.0</td><td>53.3</td>
+          </tr>
+          <tr class="failed"><td class="name">InternVL3.5-30B-A3B</td><td colspan="14">× Task Failed</td></tr>
+          <tr class="failed"><td class="name">Janus-Pro-7B</td><td colspan="14">× Task Failed</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lb-note">The full breakdown above reports Overall, competition Rank, Geo. (the mean of D3 and D5, isolating pure geometric reasoning from task-compliance), and every sub-metric behind D1–D5. Bold marks the best value per metric, underlined marks the second-best.</p>
+
+    <h3 style="margin-top:36px">Perceptual leaderboard</h3>
+    <p>The perceptual evaluation is restricted to the six top-scored models, judged across 200 scenes (20 per room type). The resulting ranking largely mirrors the numerical leaderboard, with one notable exception: GPT-4o ranks second overall numerically but drops to second-to-last here. Its high numerical score comes from getting individual objects roughly right, which is not the same as producing a layout that looks coherent as a whole scene. Together with the numerical metrics, this perceptual check offers a more intuitive, visual way to assess a model's 3D understanding and spatial reasoning as a whole.</p>
+    <div class="lb-wrap">
+      <table>
+        <thead>
+          <tr><th style="text-align:left">Model</th><th class="r">Mean Perceptual↑</th><th class="r">Mean Rank↓</th><th class="r">Top-1 (%)</th></tr>
+        </thead>
+        <tbody>
+          <tr class="lead"><td class="model">Gemini 2.5 Pro</td><td class="geo" style="color:var(--ink);font-weight:600">3.56</td><td class="geo" style="color:var(--ink);font-weight:600">2.40</td><td class="geo" style="color:var(--ink);font-weight:600">41.2</td></tr>
+          <tr><td class="model">GPT-5.4</td><td class="geo">3.49</td><td class="geo">2.45</td><td class="geo">23.5</td></tr>
+          <tr><td class="model">Gemma-4-31B-IT</td><td class="geo">3.22</td><td class="geo">3.26</td><td class="geo">11.8</td></tr>
+          <tr><td class="model">Claude Sonnet 4.6</td><td class="geo">3.06</td><td class="geo">3.39</td><td class="geo">17.6</td></tr>
+          <tr><td class="model">GPT-4o</td><td class="geo">2.78</td><td class="geo">4.15</td><td class="geo">2.9</td></tr>
+          <tr><td class="model">Qwen2.5-VL-72B-Instruct</td><td class="geo">1.92</td><td class="geo">5.39</td><td class="geo">2.9</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="lb-note">Mean Perceptual: average 1–5 Likert score from the Judge VLM, repeated five times. Mean Rank: average strict total ranking per scene. Top-1: share of scenes where the model's reconstruction was judged best.</p>
+
+  </section>
+
+  <section id="conclusion">
+    <h2>Conclusion</h2>
+    <p>We present IDEAL-Scenes and IDEAL-Bench, a dataset and evaluation suite for testing whether vision-language models can recover a coherent 3D layout. Our evaluation of fifteen such models reveals a consistent pattern of strengths and bottlenecks in how they reason about space.</p>
+
+    <div class="dims dims-3">
+      <div class="dim">
+        <div class="t">Describing eyes, not measuring eyes</div>
+        <p class="m">Scene validity and object recognition are strong across the board, but geometric accuracy collapses for every model, suggesting that current VLMs are trained to describe scenes rather than to measure them.</p>
+      </div>
+      <div class="dim">
+        <div class="t">Scaling is not all you need</div>
+        <p class="m">Performance does not track parameter count, with smaller models sometimes outperforming much larger ones, suggesting that metric 3D understanding depends more on training composition than on raw scale.</p>
+      </div>
+      <div class="dim">
+        <div class="t">The grid illusion, and a new blind spot</div>
+        <p class="m">Models generate internally regular grids without anchoring them correctly to the world, the same blind spot that causes rankings to diverge from QA-based and primitive-reconstruction benchmarks.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>BibTeX</h2>
+    <!-- ===== EDIT: replace with the final citation once de-anonymized ===== -->
+    <div class="bib">
+      <button class="copy" onclick="copyBib(this)">Copy</button>
+      <pre id="bibtex">@misc{idealbench2026,
+    title={IDEAL-Bench: Indoor Benchmark Dataset for Evaluating &amp; Analysis by 3D Layout Reasoning},
+    author={Yuening Cai and Junwei Zhou and Youran Qu and Yu-Wing Tai},
+    year={2026},
+    eprint={xxxx},
+    archivePrefix={arXiv},
+    primaryClass={cs.CV},
+    url={https://arxiv.org/abs/xxxx}
+  }</pre>
+    </div>
+  </section>
+
+  <footer>
+    <p>IDEAL-Bench. © 2026 The Authors.</p>
+  </footer>
+</div>
+
+<div class="lightbox-overlay" id="lightbox">
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<script>
+  function copyBib(btn){
+    const text = document.getElementById('bibtex').innerText;
+    navigator.clipboard.writeText(text).then(()=>{
+      const old = btn.textContent; btn.textContent='Copied!';
+      setTimeout(()=>btn.textContent=old,1500);
+    });
+  }
+
+  // Click-to-zoom for figure images
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightbox-img');
+  document.querySelectorAll('.teaser img').forEach(img => {
+    img.addEventListener('click', () => {
+      lightboxImg.src = img.src;
+      lightboxImg.alt = img.alt;
+      lightbox.classList.add('open');
+    });
+  });
+  lightbox.addEventListener('click', () => lightbox.classList.remove('open'));
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') lightbox.classList.remove('open');
+  });
+</script>
+</body>
+</html>
